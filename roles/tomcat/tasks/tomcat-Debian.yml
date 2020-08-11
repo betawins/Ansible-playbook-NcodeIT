@@ -61,6 +61,31 @@
     dest: /etc/systemd/system/tomcat.service
   when: ansible_service_mgr == "systemd"
 
+# copy tomcat-users file
+- name: configure users
+  template:
+    src: tomcat-users.xml
+    dest: "/usr/share/tomcat/conf"
+    mode: 0600
+    owner: tomcat
+    group: tomcat
+# copy context.xml file to host-manager directory
+- name: changes to context.xml
+  template:
+    src: context.xml
+    dest: "/usr/share/tomcat/webapps/host-manager/META-INF"
+    mode: 0600
+    owner: tomcat
+    group: tomcat
+#copy context.xml file to Manager directory
+- name: changes to context.xml
+  template:
+    src: context.xml
+    dest: "/usr/share/tomcat/webapps/manager/META-INF/context.xml"
+    mode: 0600
+    owner: tomcat
+    group: tomcat
+
 - name: Start and enable tomcat
   service:
     daemon_reload: yes
