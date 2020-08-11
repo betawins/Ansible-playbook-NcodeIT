@@ -1,0 +1,21 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: checking service status
+      command: systemctl status "{{ item }}"
+      with_items:
+      - nginx
+      - docker
+      register: result
+      ignore_errors: yes
+    - name: showing report
+      debug:
+       var: result
+    - name: Start service, if it is not running
+      service:
+        name: "{{ item }}"
+        state: started
+      with_items:
+      - nginx
+      - docker
