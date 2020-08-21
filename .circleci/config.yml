@@ -1,0 +1,12 @@
+version: 2.1
+jobs:
+  build:
+    working_directory: ~/public
+    docker:
+      - image: cytopia/ansible-lint
+
+     steps:
+       - checkout
+       - run
+           name: Run Ansible-lint tests
+           command: "ansible-lint ."
