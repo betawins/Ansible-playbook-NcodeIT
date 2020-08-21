@@ -6,6 +6,6 @@ jobs:
       - image: cytopia/ansible-lint
     steps:
       - checkout
-      - run
+      - run:
           name: Run Ansible-lint tests
           command: "ansible-lint ."
