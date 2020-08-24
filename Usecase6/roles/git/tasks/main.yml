@@ -1,0 +1,18 @@
+---
+- name: Install git
+  apt:
+    name: git
+    state: present
+
+- name: Download the sample .war file from github
+  get_url:
+    url: https://raw.githubusercontent.com/manulachathurika/Apache_Stratos_Tomcat_Applications/master/Calendar.war
+    dest: /home/ubuntu
+    
+- name: Copy war file to tomcat home directory
+  copy:
+    src: /home/ubuntu/Calendar.war
+    remote_src: yes
+    dest: /usr/share/tomcat/webapps
+    owner: ubuntu
+    group: ubuntu

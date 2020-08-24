@@ -3,8 +3,8 @@
 default_container_name: nginx_test
 default_container_image: nginx:latest
 #default_container_command: sleep 1d
-docker_username: sabair0509
-docker_password: Alina@0509
+docker_username: Pass_docker_username
+docker_password: Pass_docker_password
 image: swapnillinux/apache-php
 name: myweb
 src_port: 8080

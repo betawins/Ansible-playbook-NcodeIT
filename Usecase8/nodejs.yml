@@ -1,0 +1,79 @@
+---
+  - name: Install and Launch the Simple NodeJS Application
+    hosts: all
+    become: yes
+    vars_files:
+       - secrets.yml
+    vars:
+       - destdir: /apps/Trading-UI
+
+    tasks:
+       - name: Download node version manager script
+         shell: "curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -"
+         
+       - name : install NodeJs and npm
+         apt:
+           name: nodejs
+           state: latest
+
+       - name : validate the nodejs installation
+         debug: msg="Installation of node is Successfull"
+
+       - name: Version of Node and NPM
+         shell:
+            "npm --version && node --version"
+         register: versioninfo
+
+       - name: Version Info
+         debug:
+           msg: "Version info {{ versioninfo.stdout_lines }}"
+         when: versioninfo is changed
+       
+       - name: Install PM2 to run application in background
+         shell: "sudo npm install pm2 -g"
+
+       - name: Download the NodeJS code from the GitRepo
+         become: yes
+         git:
+            repo: 'https://{{ gituser }}:{{ gitpass }}@github.com/betawins/Trading-UI.git'
+            dest: "{{ destdir }}"
+
+       - name: Change the ownership of the directory
+         become: yes
+         file:
+           path: "{{ destdir }}"
+           owner: "ubuntu"
+           group: "ubuntu"
+         register: chgrpout
+
+                
+       - name: Download the dependencies
+         shell: "npm audit fix"
+         args:
+             chdir: "{{ destdir }}"
+       - name: Install Dependencies with NPM install command
+         shell:
+            "npm install"
+         args:
+            chdir: "{{ destdir }}"
+         register: npminstlout  
+
+       - name: Builds the app for production to the build folder
+         shell: "npm run build"
+         args:
+            chdir: "{{ destdir }}"
+
+       - name: Start the App
+         shell: "pm2 --name Trading-UI start npm -- start"
+         args:
+            chdir: "{{ destdir }}"
+         
+       - name: Validating the port is open
+         tags: nodevalidate
+         wait_for:
+           host: "localhost"
+           port: 3000
+           delay: 10
+           timeout: 30
+           state: started
+           msg: "NodeJS server is not running"

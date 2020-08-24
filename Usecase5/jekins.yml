@@ -1,0 +1,54 @@
+---
+- hosts: localhost
+  become: yes
+
+  tasks:
+    - name: Update APT package manager repositories cache
+      become: true
+      apt:
+        update_cache: yes
+
+    - name: Upgrade installed packages
+      become: true
+      apt:
+        upgrade: dist
+
+    - name: install wget
+      apt:
+        name: wget
+        state: present
+
+    - name: install openjdk
+      apt:
+        name: default-jdk
+        state: present
+
+    - name: Download and Add jenkins key
+      apt_key: url=https://pkg.jenkins.io/debian-stable/jenkins.io.key state=present
+
+    - name: Add Latest Jenkins Repository
+      apt_repository: repo='deb http://pkg.jenkins-ci.org/debian binary/' state=present
+
+    - name: install jenkins
+      apt:
+       name: jenkins
+       state: present
+
+    - name: start jenkins
+      systemd:
+       name: jenkins
+       state: started
+
+    - name: enable jenkins
+      systemd:
+       name: jenkins
+       enabled: true
+
+    - name: init password jenkin
+      command: cat /var/lib/jenkins/secrets/initialAdminPassword
+      changed_when: false
+      register: result
+
+    - name: print init password jenkins
+      debug:
+       var: result.stdout

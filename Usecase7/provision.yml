@@ -1,0 +1,59 @@
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - secrets.yml
+  tasks:
+     - name: Insatll pip
+       apt:
+         name: python-pip
+         state: present
+
+     - name: Ensure boto and boto3 modules are installed
+       pip:
+         name: ['boto', 'boto3', 'botocore']
+#       delegate_to: "{{ ec2_instance_ip }}"
+     - name: create a security group in us-east-1
+       ec2_group:
+         name: Ncode-SG
+         description: Provisioned by ansible-playbook
+         region: us-east-1
+         aws_access_key: "{{ aws_access_key }}"
+         aws_secret_key: "{{ aws_secret_key }}"
+         rules:
+           - proto: tcp
+             from_port: 80
+             to_port: 80
+             cidr_ip: 0.0.0.0/0
+           - proto: tcp
+             from_port: 22
+             to_port: 22
+             cidr_ip: 0.0.0.0/0
+       register: security_group
+
+     - name: Security group id
+       debug:
+         var: security_group.group_id
+
+     - name: create ec2 instance
+       ec2:
+         key_name: kubernetes
+         aws_access_key: "{{ aws_access_key }}"
+         aws_secret_key: "{{ aws_secret_key }}"
+         image: "ami-0bcc094591f354be2"
+         wait: yes
+         wait_timeout: 500
+         instance_type: t2.micro
+         group_id: "{{ security_group.group_id }}"
+         region: "us-east-1"
+         zone: "us-east-1e"
+         volumes:
+           - device_name: /dev/xvda
+             volume_type: gp2  #insert the volume code here
+             volume_size: 10
+         count_tag:
+           Name: apacheserver
+         exact_count: 2
+         instance_tags:
+           Name: Ansible-provision
+       register: ec2

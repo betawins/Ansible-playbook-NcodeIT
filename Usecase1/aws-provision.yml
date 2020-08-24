@@ -1,0 +1,153 @@
+---
+
+- name: Provisioning of aws Environment
+  hosts: localhost
+  gather_facts: False
+  vars_files:
+    - secrets.yml
+  tasks:
+
+    - name: create a security group in us-east-1
+      ec2_group:
+        name: mysg
+        description: Provisioned by ansible-playbook
+        region: us-east-1
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        rules:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+      register: security_group
+
+    - name: Security group id
+      debug:
+        var: security_group.group_id
+
+    - name: Create an ec2 instance
+      ec2:
+         aws_access_key: "{{ aws_access_key }}"
+         aws_secret_key: "{{ aws_secret_key }}"
+         key_name: kubernetes
+         group: mysg  # security group name
+         instance_type: t2.micro
+         image: "ami-0bcc094591f354be2"
+         wait: true
+         wait_timeout: 500
+         region: us-east-1
+         zone: us-east-1a
+         count: 1  # default
+         count_tag:
+            Name: Demo
+         instance_tags:
+            Name: Load
+         vpc_subnet_id: subnet-5eabb270
+         assign_public_ip: yes
+      register: ec2
+
+    - name: Check for Instance ID
+      debug:
+        var: ec2.instance_ids
+    
+    - name: Create target group and attach it to Ec2 instance
+      elb_target_group:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        name: mytargetgroup
+        protocol: http
+        port: 80
+        vpc_id: vpc-d72a04ad
+    # vpc_id: subnet-8bfbyu8f3
+        region: us-east-1
+#        zone: us-east-1a
+        health_check_protocol: HTTP
+        health_check_path: /
+        health_check_timeout: 10
+        health_check_interval: 30
+        healthy_threshold_count: 2
+        state: present
+
+        targets:
+          - Id: "{{ ec2.instances[0].id }}"
+            Port: 80
+        wait_timeout: 200
+
+
+
+    - name: Creating applciation load balancer
+      elb_application_lb:
+       aws_access_key: "{{ aws_access_key }}"
+       aws_secret_key: "{{ aws_secret_key }}"
+       name: myalb
+       subnets:
+         - "subnet-5eabb270"
+         - "subnet-269c837a"
+       region: us-east-1
+#       zone: us-east-1a
+       security_groups:
+         mysg
+       scheme: internal
+       listeners:
+         - Protocol: HTTP
+           Port: 80
+           DefaultActions:
+             - Type: forward
+               TargetGroupName: mytargetgroup
+       state: present
+      register: elb_dns
+
+    - debug: var=elb_dns.dns_name
+
+
+    - name: create mysql RDS service
+      rds:
+       aws_access_key: "{{ aws_access_key }}"
+       aws_secret_key: "{{ aws_secret_key }}"
+       command: create
+       instance_name: new-database1
+       db_engine: MySQL
+       engine_version: 5.7.22
+       size: "10"
+       instance_type: db.t2.small
+       username: mysql_admin
+       password: root12345
+       region: us-east-1
+       zone: us-east-1a    
+#       subnet: "default vpc"
+
+       tags:
+        Environment: testing
+        Application: cms
+
+    - name: Create Redis server
+      elasticache:
+       aws_access_key: "{{ aws_access_key }}"
+       aws_secret_key: "{{ aws_secret_key }}"
+       name: "Redis"
+       state: present
+       engine: redis
+       cache_engine_version: 5.0.6
+       node_type: cache.t2.micro
+       num_nodes: 1
+       cache_port: 6379
+       region: us-east-1
+#       zone: us-east-1a
+#   cache_security_groups:
+#   security_group_ids: sg-0a66e547654674e227
+
+
+    - name: update record's in route 53 and atatch ec2 public ip tp domain
+      route53:
+       aws_access_key: "{{ aws_access_key }}"
+       aws_secret_key: "{{ aws_secret_key }}"
+       state: present
+       zone: sabearnhs.tk
+       type: A
+       record: sabearnhs.tk
+       value: "{{ ec2.instances[0].public_ip }}"
+       ttl: 30
