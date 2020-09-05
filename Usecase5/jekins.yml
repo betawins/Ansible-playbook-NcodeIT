@@ -43,6 +43,10 @@
       systemd:
        name: jenkins
        enabled: true
+     
+    - name: pause playbook to update environment
+      pause:
+        minutes: 1
 
     - name: init password jenkin
       command: cat /var/lib/jenkins/secrets/initialAdminPassword
