@@ -30,7 +30,7 @@
         var: security_group.group_id
 
     - name: Create an ec2 instance
-      ec2:
+      amazon.aws.ec2_instance:
          aws_access_key: "{{ aws_access_key }}"
          aws_secret_key: "{{ aws_secret_key }}"
          key_name: kubernetes
@@ -53,7 +53,7 @@
     - name: Check for Instance ID
       debug:
         var: ec2.instance_ids
-    
+
     - name: Create target group and attach it to Ec2 instance
       elb_target_group:
         aws_access_key: "{{ aws_access_key }}"
@@ -105,7 +105,7 @@
 
 
     - name: create mysql RDS service
-      rds:
+      community.aws.rds_instance:
        aws_access_key: "{{ aws_access_key }}"
        aws_secret_key: "{{ aws_secret_key }}"
        command: create
@@ -117,7 +117,7 @@
        username: mysql_admin
        password: root12345
        region: us-east-1
-       zone: us-east-1a    
+       zone: us-east-1a
 #       subnet: "default vpc"
 
        tags:
